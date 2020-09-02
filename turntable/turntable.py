@@ -122,13 +122,8 @@ class Turntable(Process):
                 >= FINGERPRINT_DELAY + FINGERPRINT_IDENTIFY_SECONDS
                 and self.identified == False
             ):
-                startframe = self.buffer.framerate * (
-                    FINGERPRINT_DELAY + FINGERPRINT_IDENTIFY_DELAY
-                )
-                endframe = (
-                    startframe + self.buffer.framerate * FINGERPRINT_IDENTIFY_SECONDS
-                )
-                sample = self.buffer[startframe:endframe]
+                startframe = - self.buffer.framerate * FINGERPRINT_IDENTIFY_SECONDS
+                sample = self.buffer[startframe:]
                 identification = self.recognizer.recognize(sample)
                 logger.debug("Dejavu results: %s", identification)
                 if results := identification[dejavu.config.settings.RESULTS]:
@@ -142,11 +137,8 @@ class Turntable(Process):
                 now - self.last_update >= FINGERPRINT_DELAY + FINGERPRINT_STORE_SECONDS
                 and self.captured == False
             ):
-                startframe = self.buffer.framerate * FINGERPRINT_DELAY
-                endframe = (
-                    startframe + self.buffer.framerate * FINGERPRINT_STORE_SECONDS
-                )
-                sample = self.buffer[startframe:endframe]
+                startframe = - self.buffer.framerate * FINGERPRINT_STORE_SECONDS
+                sample = self.buffer[startframe:]
                 with wave.open("/tmp/fingerprint.wav", "wb") as wavfile:
                     wavfile.setsampwidth(2)
                     wavfile.setnchannels(sample.channels)
