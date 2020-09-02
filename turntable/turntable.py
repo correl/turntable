@@ -55,7 +55,8 @@ class NewMetadata(Event):
 
 
 class PCMRecognizer(BaseRecognizer):
-    def pcm_to_channel_data(self, pcm: PCM) -> List[List[int]]:
+    @staticmethod
+    def pcm_to_channel_data(pcm: PCM) -> List[List[int]]:
         def to_ints(data: bytes) -> List[int]:
             return list(struct.unpack("{}h".format(len(data) // 2), data))
 
@@ -63,7 +64,7 @@ class PCMRecognizer(BaseRecognizer):
         return [stream[channel :: pcm.channels] for channel in range(pcm.channels)]
 
     def recognize(self, pcm: PCM) -> Dict[str, Any]:
-        data = self.pcm_to_channel_data(pcm)
+        data = PCMRecognizer.pcm_to_channel_data(pcm)
         t = time.time()
         matches, fingerprint_time, query_time, align_time = self._recognize(*data)
         t = time.time() - t
