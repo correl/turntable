@@ -19,6 +19,7 @@ from turntable.models import PCM
 logger = logging.getLogger(__name__)
 
 
+FINGERPRINT_DELAY = 5
 FINGERPRINT_IDENTIFY_SECONDS = 5
 FINGERPRINT_STORE_SECONDS = 30
 SAMPLE_SECONDS = 30
@@ -104,7 +105,7 @@ class Turntable(Process):
             maximum = audioop.max(fragment.raw, 2)
             self.update_audiolevel(maximum)
 
-    def update_audiolevel(self, level: int):
+    def update_audiolevel(self, level: int) -> None:
         newstate = self.state
         now = time.time()
         if self.state == State.idle:
@@ -116,12 +117,15 @@ class Turntable(Process):
             if level <= SILENCE_THRESHOLD:
                 self.transition(State.silent, now)
             elif (
-                now - self.last_update >= FINGERPRINT_IDENTIFY_SECONDS
+                now - self.last_update
+                >= FINGERPRINT_DELAY + FINGERPRINT_IDENTIFY_SECONDS
                 and self.identified == False
             ):
-                sample = self.buffer[
-                    0 : self.buffer.framerate * FINGERPRINT_IDENTIFY_SECONDS
-                ]
+                startframe = self.buffer.framerate * FINGERPRINT_DELAY
+                endframe = (
+                    startframe + self.buffer.framerate * FINGERPRINT_IDENTIFY_SECONDS
+                )
+                sample = self.buffer[startframe:endframe]
                 identification = self.recognizer.recognize(sample)
                 logger.debug("Dejavu results: %s", identification)
                 if results := identification[dejavu.config.settings.RESULTS]:
@@ -132,12 +136,14 @@ class Turntable(Process):
                     )
                 self.identified = True
             elif (
-                now - self.last_update >= FINGERPRINT_STORE_SECONDS
+                now - self.last_update >= FINGERPRINT_DELAY + FINGERPRINT_STORE_SECONDS
                 and self.captured == False
             ):
-                sample = self.buffer[
-                    0 : self.buffer.framerate * FINGERPRINT_STORE_SECONDS
-                ]
+                startframe = self.buffer.framerate * FINGERPRINT_DELAY
+                endframe = (
+                    startframe + self.buffer.framerate * FINGERPRINT_STORE_SECONDS
+                )
+                sample = self.buffer[startframe:endframe]
                 with wave.open("/tmp/fingerprint.wav", "wb") as wavfile:
                     wavfile.setsampwidth(2)
                     wavfile.setnchannels(sample.channels)
@@ -154,10 +160,10 @@ class Turntable(Process):
             elif now - self.last_update >= STOP_DELAY:
                 self.transition(State.idle, now)
 
-    def transition(self, to_state: State, updated_at: float):
+    def transition(self, to_state: State, updated_at: float) -> None:
+        logger.debug("Transition: %s => %s", self.state, to_state)
         self.state = to_state
         self.last_update = updated_at
-        logger.debug("State: %s", self.state)
 
         if to_state == State.idle:
             self.events_out.put(StoppedPlaying())
