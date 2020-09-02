@@ -23,7 +23,6 @@ VERSION = importlib.metadata.version("turntable")
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO)
     print(f"Turntable {VERSION}")
 
     parser = argparse.ArgumentParser()
@@ -33,6 +32,8 @@ def main() -> None:
     args = parser.parse_args()
     with open(args.config, "r") as config_file:
         config: Dict[str, Any] = json.load(config_file)
+
+    logging.basicConfig(level=logging.DEBUG if config.get("debug") else logging.INFO)
 
     pcm_in: "Queue[PCM]" = Queue()
     events: "Queue[Event]" = Queue()

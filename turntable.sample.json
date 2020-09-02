@@ -1,4 +1,5 @@
 {
+    "debug": false,
     "audio": {
         "device": "hw:1,0",
         "framerate": 48000,
