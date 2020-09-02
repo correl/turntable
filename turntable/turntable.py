@@ -132,6 +132,8 @@ class Turntable(Process):
                             results[0][dejavu.config.settings.SONG_NAME].decode("utf-8")
                         )
                     )
+                else:
+                    self.events_out.put(NewMetadata("Unknown Artist - Unknown Album"))
                 self.identified = True
             elif (
                 now - self.last_update >= FINGERPRINT_DELAY + FINGERPRINT_STORE_SECONDS
@@ -156,7 +158,8 @@ class Turntable(Process):
                 self.transition(State.idle, now)
 
     def transition(self, to_state: State, updated_at: float) -> None:
-        logger.debug("Transition: %s => %s", self.state, to_state)
+        from_state = self.state
+        logger.debug("Transition: %s => %s", from_state, to_state)
         self.state = to_state
         self.last_update = updated_at
 
@@ -164,5 +167,5 @@ class Turntable(Process):
             self.events_out.put(StoppedPlaying())
             self.identified = False
             self.captured = False
-        elif to_state == State.playing:
+        elif from_state == State.idle and to_state == State.playing:
             self.events_out.put(StartedPlaying())
