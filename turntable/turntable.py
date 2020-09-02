@@ -122,7 +122,9 @@ class Turntable(Process):
                 >= FINGERPRINT_DELAY + FINGERPRINT_IDENTIFY_SECONDS
                 and self.identified == False
             ):
-                startframe = self.buffer.framerate * FINGERPRINT_DELAY
+                startframe = self.buffer.framerate * (
+                    FINGERPRINT_DELAY + FINGERPRINT_IDENTIFY_DELAY
+                )
                 endframe = (
                     startframe + self.buffer.framerate * FINGERPRINT_IDENTIFY_SECONDS
                 )
