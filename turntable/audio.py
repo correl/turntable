@@ -7,6 +7,7 @@ from typing import Deque, List, Tuple, Union
 
 import alsaaudio  # type: ignore
 
+from turntable.events import Audio
 from turntable.models import PCM
 
 logger = logging.getLogger(__name__)
@@ -16,6 +17,7 @@ class Listener(Process):
     def __init__(
         self,
         pcm_in: "Queue[PCM]",
+        events: Queue,
         device: str,
         sample_length: int = 30,
         framerate: int = 44100,
@@ -25,6 +27,7 @@ class Listener(Process):
         super().__init__()
         logger.info("Initializing Listener")
         self.pcm_in = pcm_in
+        self.events = events
         self.framerate = framerate
         self.channels = channels
         self.capture = alsaaudio.PCM(
@@ -55,7 +58,9 @@ class Listener(Process):
         while True:
             length, data = self.capture.read()
             if length > 0:
-                self.pcm_in.put(PCM(self.framerate, self.channels, data))
+                pcm = PCM(self.framerate, self.channels, data)
+                self.pcm_in.put(pcm)
+                self.events.put(Audio(pcm))
             else:
                 logger.warning(
                     "Sampler error (length={}, bytes={})".format(length, len(data))

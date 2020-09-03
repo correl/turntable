@@ -14,6 +14,7 @@ from dejavu.base_classes.base_recognizer import BaseRecognizer  # type: ignore
 import dejavu.config.settings  # type: ignore
 
 
+from turntable.events import *
 from turntable.models import PCM
 
 logger = logging.getLogger(__name__)
@@ -33,31 +34,6 @@ class State(enum.Enum):
     playing = "playing"
     silent = "silent"
 
-
-class Event:
-    @property
-    def type(self) -> str:
-        return self.__class__.__name__
-
-    def __repr__(self) -> str:
-        return f"<{self.type}>"
-
-
-class StartedPlaying(Event):
-    ...
-
-
-class StoppedPlaying(Event):
-    ...
-
-
-@dataclass
-class NewMetadata(Event):
-    title: str
-
-@dataclass
-class Audio(Event):
-    pcm: PCM
 
 class PCMRecognizer(BaseRecognizer):
     @staticmethod
@@ -106,7 +82,6 @@ class Turntable(Process):
         logger.info("Initializing Turntable")
         while fragment := self.pcm_in.get():
             self.buffer.append(fragment)
-            self.events_out.put(Audio(fragment))
             maximum = audioop.max(fragment.raw, 2)
             self.update_audiolevel(maximum)
 
@@ -126,7 +101,7 @@ class Turntable(Process):
                 >= FINGERPRINT_DELAY + FINGERPRINT_IDENTIFY_SECONDS
                 and self.identified == False
             ):
-                startframe = - self.buffer.framerate * FINGERPRINT_IDENTIFY_SECONDS
+                startframe = -self.buffer.framerate * FINGERPRINT_IDENTIFY_SECONDS
                 sample = self.buffer[startframe:]
                 identification = self.recognizer.recognize(sample)
                 logger.debug("Dejavu results: %s", identification)
@@ -143,7 +118,7 @@ class Turntable(Process):
                 now - self.last_update >= FINGERPRINT_DELAY + FINGERPRINT_STORE_SECONDS
                 and self.captured == False
             ):
-                startframe = - self.buffer.framerate * FINGERPRINT_STORE_SECONDS
+                startframe = -self.buffer.framerate * FINGERPRINT_STORE_SECONDS
                 sample = self.buffer[startframe:]
                 with wave.open("/tmp/fingerprint.wav", "wb") as wavfile:
                     wavfile.setsampwidth(2)

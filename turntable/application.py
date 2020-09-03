@@ -43,6 +43,7 @@ def run() -> "Iterator[Queue[Event]]":
     audio_config = config.get("audio", dict())
     listener = Listener(
         pcm_in,
+        events,
         audio_config.get("device", "default"),
         framerate=audio_config.get("framerate", 44100),
         channels=audio_config.get("channels", 2),
