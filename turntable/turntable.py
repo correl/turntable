@@ -55,6 +55,9 @@ class StoppedPlaying(Event):
 class NewMetadata(Event):
     title: str
 
+@dataclass
+class Audio(Event):
+    pcm: PCM
 
 class PCMRecognizer(BaseRecognizer):
     @staticmethod
@@ -103,6 +106,7 @@ class Turntable(Process):
         logger.info("Initializing Turntable")
         while fragment := self.pcm_in.get():
             self.buffer.append(fragment)
+            self.events_out.put(Audio(fragment))
             maximum = audioop.max(fragment.raw, 2)
             self.update_audiolevel(maximum)
 

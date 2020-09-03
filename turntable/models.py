@@ -43,6 +43,9 @@ class PCM:
         for i in range(0, len(self._data), self.framesize):
             yield PCM(self.framerate, self.channels, self.raw[i : i + self.framesize])
 
+    def __len__(self) -> int:
+        return len(self._data) // self.framesize
+
     def append(self, other: "PCM") -> None:
         if other.framerate != self.framerate or other.channels != self.channels:
             raise ValueError("Cannot append incompatible PCM audio")
