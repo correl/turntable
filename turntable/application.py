@@ -70,6 +70,7 @@ def run() -> "Iterator[Queue[Event]]":
     try:
         yield events
     except:
+        logging.exception("Terminating")
         for process in processes:
             if process.is_alive():
                 process.terminate()

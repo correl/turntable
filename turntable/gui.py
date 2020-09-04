@@ -8,7 +8,7 @@ import pyglet  # type: ignore
 import pyglet.clock  # type: ignore
 import scipy.signal  # type: ignore
 
-from turntable import application, turntable
+from turntable import application, models, turntable
 
 
 class Plot:
@@ -32,9 +32,13 @@ class Plot:
         self.color = color
         self.batch = batch or pyglet.graphics.Batch()
         self.lines: List[pyglet.shapes.Line] = []
+        self.audio = b""
 
-    def update(self, data):
-        heights = scipy.signal.resample(data, self.bars) * self.height / 2 ** 16
+    def update(self):
+        data = np.fromstring(self.audio, dtype=np.int16)
+        fft = abs(np.fft.fft(data).real)
+        fft = fft[: len(fft) // 2]
+        heights = scipy.signal.resample(fft, self.bars) * self.height / 2 ** 16
         self.lines = [
             pyglet.shapes.Line(
                 self.x + x / self.bars * self.width,
@@ -55,6 +59,7 @@ class Plot:
 def main():
     window = pyglet.window.Window(fullscreen=True)
     with application.run() as events:
+        audio = b""
         label = pyglet.text.Label(
             "<Idle>",
             font_name="Noto Sans",
@@ -92,12 +97,13 @@ def main():
                 elif isinstance(event, turntable.NewMetadata):
                     label.text = event.title
                 elif isinstance(event, turntable.Audio):
-                    data = np.fromstring(event.pcm.raw, dtype=np.int16)
-                    fft = abs(np.fft.fft(data).real)
-                    fft = fft[: len(fft) // 2]
-                    plot.update(fft)
+                    plot.audio = event.pcm.raw
             except queue.Empty:
                 ...
 
+        def update_vis(dt):
+            plot.update()
+
         pyglet.clock.schedule(check_events)
+        pyglet.clock.schedule_interval(update_vis, 0.03)
         pyglet.app.run()
