@@ -9,7 +9,7 @@ from typing import Any, Dict, Iterator
 
 from dejavu import Dejavu  # type: ignore
 
-from turntable.audio import Listener
+from turntable.audio import Listener, Player
 from turntable.icecast import Icecast
 from turntable.models import PCM
 from turntable.turntable import (
@@ -38,11 +38,12 @@ def run() -> "Iterator[Queue[Event]]":
 
 
     pcm_in: "Queue[PCM]" = Queue()
+    pcm_out: "Queue[PCM]" = Queue()
     events: "Queue[Event]" = Queue()
 
     audio_config = config.get("audio", dict())
     listener = Listener(
-        pcm_in,
+        [pcm_in, pcm_out],
         events,
         audio_config.get("device", "default"),
         framerate=audio_config.get("framerate", 44100),
@@ -50,9 +51,17 @@ def run() -> "Iterator[Queue[Event]]":
         period_size=audio_config.get("period_size", 4096),
     )
 
+    player = Player(
+        pcm_out,
+        audio_config.get("output_device", "null"),
+        framerate=audio_config.get("framerate", 44100),
+        channels=audio_config.get("channels", 2),
+        period_size=audio_config.get("period_size", 4096),
+    )
+
     dejavu = Dejavu(config.get("dejavu", dict()))
 
-    player = Turntable(listener.framerate, listener.channels, dejavu, pcm_in, events)
+    turntable = Turntable(listener.framerate, listener.channels, dejavu, pcm_in, events)
 
     icecast_config = config.get("icecast", dict())
     icecast = Icecast(
@@ -63,7 +72,7 @@ def run() -> "Iterator[Queue[Event]]":
         password=icecast_config.get("admin_password", "hackme"),
     )
 
-    processes = [listener, player]
+    processes = [listener, player, turntable]
     for process in processes:
         process.daemon = True
         process.start()
