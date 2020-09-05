@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 
-from turntable.models import PCM
-
 
 class Event:
     @property
@@ -23,8 +21,3 @@ class StoppedPlaying(Event):
 @dataclass
 class NewMetadata(Event):
     title: str
-
-
-@dataclass
-class Audio(Event):
-    pcm: PCM

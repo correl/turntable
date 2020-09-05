@@ -55,7 +55,6 @@ class Application:
             pcms.append(pcm_out)
         listener = Listener(
             pcms,
-            events,
             audio_config.get("device", "default"),
             framerate=audio_config.get("framerate", 44100),
             channels=audio_config.get("channels", 2),
