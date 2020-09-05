@@ -1,19 +1,23 @@
 import logging
+import os
 import queue
 from statistics import fmean
 from typing import Iterable, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
-import pyglet  # type: ignore
-import pyglet.clock  # type: ignore
+import pygame
+from pygame.locals import *
 import scipy.signal  # type: ignore
 
 from turntable import application, models, turntable
+
+logger = logging.getLogger(__name__)
 
 
 class Plot:
     def __init__(
         self,
+        screen,
         x: int,
         y: int,
         width: int,
@@ -21,8 +25,8 @@ class Plot:
         bars: int = 20,
         bar_width: int = 40,
         color: Tuple[int, int, int] = (255, 255, 255),
-        batch: Optional[pyglet.graphics.Batch] = None,
     ) -> None:
+        self.screen = screen
         self.x = x
         self.y = y
         self.width = width
@@ -30,80 +34,98 @@ class Plot:
         self.bars = bars
         self.bar_width = bar_width
         self.color = color
-        self.batch = batch or pyglet.graphics.Batch()
-        self.lines: List[pyglet.shapes.Line] = []
         self.audio = b""
 
-    def update(self):
+    def draw(self) -> None:
         data = np.fromstring(self.audio, dtype=np.int16)
+        if len(data) == 0:
+            return
         fft = abs(np.fft.fft(data).real)
         fft = fft[: len(fft) // 2]
         heights = scipy.signal.resample(fft, self.bars) * self.height / 2 ** 16
-        self.lines = [
-            pyglet.shapes.Line(
-                self.x + x / self.bars * self.width,
+        for i, height in enumerate(heights):
+            pygame.draw.rect(
+                self.screen,
+                self.color,
+                (
+                    self.x + i / self.bars * self.width,
+                    self.height,
+                    self.bar_width,
+                    -height,
+                ),
                 0,
-                self.x + x / self.bars * self.width,
-                y,
-                width=self.bar_width,
-                color=self.color,
-                batch=self.batch,
             )
-            for x, y in enumerate(heights)
-        ]
-
-    def draw(self) -> None:
-        self.batch.draw()
 
 
 def main():
-    window = pyglet.window.Window(fullscreen=True)
-    with application.run() as events:
-        audio = b""
-        label = pyglet.text.Label(
-            "<Idle>",
-            font_name="Noto Sans",
-            font_size=36,
-            x=window.width // 2,
-            y=window.height // 2,
-            anchor_x="center",
-            anchor_y="center",
-        )
-        batch = pyglet.graphics.Batch()
-        plot = Plot(
-            x=0,
-            y=0,
-            width=window.width,
-            height=window.height,
-            bars=40,
-            bar_width=window.width // 45,
-            color=(139, 0, 139),
-            batch=batch,
-        )
+    app = application.Application()
+    config = app.config.get("gui", dict())
+    FPS = int(config.get("fps", 30))
+    WIDTH = int(config.get("width", 800))
+    HEIGHT = int(config.get("height", 600))
+    disp_no = os.getenv("DISPLAY")
+    if disp_no:
+        logger.info("I'm running under X display = {0}".format(disp_no))
 
-        @window.event
-        def on_draw():
-            window.clear()
-            batch.draw()
-            label.draw()
+    # Check which frame buffer drivers are available
+    # Start with fbcon since directfb hangs with composite output
+    drivers = ["x11", "fbcon", "directfb", "svgalib"]
+    found = False
+    for driver in drivers:
+        # Make sure that SDL_VIDEODRIVER is set
+        if not os.getenv("SDL_VIDEODRIVER"):
+            os.putenv("SDL_VIDEODRIVER", driver)
+        try:
+            pygame.display.init()
+        except pygame.error:
+            logger.warn("Driver: {0} failed.".format(driver))
+            continue
+        found = True
+        break
 
-        def check_events(dt):
-            try:
-                event = events.get(False)
-                if isinstance(event, turntable.StartedPlaying):
-                    label.text = "<Record starting...>"
-                elif isinstance(event, turntable.StoppedPlaying):
-                    label.text = "<Idle>"
-                elif isinstance(event, turntable.NewMetadata):
-                    label.text = event.title
-                elif isinstance(event, turntable.Audio):
-                    plot.audio = event.pcm.raw
-            except queue.Empty:
+    if not found:
+        raise Exception("No suitable video driver found!")
+
+    size = (pygame.display.Info().current_w, pygame.display.Info().current_h)
+    logger.info("Window size: %d x %d" % (size[0], size[1]))
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    # Clear the screen to start
+    screen.fill((0, 0, 0))
+    # Initialise font support
+    pygame.font.init()
+    # Render the screen
+    pygame.display.update()
+
+    plot = Plot(
+        screen=screen,
+        x=0,
+        y=0,
+        width=screen.get_width(),
+        height=screen.get_height(),
+        bars=40,
+        bar_width=screen.get_width() // 45,
+        color=(139, 0, 139),
+    )
+
+    app.run()
+    clock = pygame.time.Clock()
+    while True:
+        for event in pygame.event.get():
+            if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
+                app.shutdown()
+                pygame.quit()
+                return
+        try:
+            while event := app.events.get(False):
                 ...
-
-        def update_vis(dt):
-            plot.update()
-
-        pyglet.clock.schedule(check_events)
-        pyglet.clock.schedule_interval(update_vis, 0.03)
-        pyglet.app.run()
+        except queue.Empty:
+            ...
+        try:
+            while pcm := app.pcm_display.get(False):
+                plot.audio = pcm.raw
+        except queue.Empty:
+            ...
+        screen.fill((0, 0, 0))
+        plot.draw()
+        pygame.display.update()
+        clock.tick(30)
