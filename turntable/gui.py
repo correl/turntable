@@ -89,6 +89,7 @@ def main():
     HEIGHT = int(config.get("height", size[1]))
     FPS = int(config.get("fps", 60))
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.mouse.set_visible(False)
     # Clear the screen to start
     screen.fill((0, 0, 0))
     # Initialise font support
