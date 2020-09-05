@@ -43,7 +43,7 @@ class Plot:
             return
         fft = abs(np.fft.fft(data).real)
         fft = fft[: len(fft) // 2]
-        heights = scipy.signal.resample(fft, self.bars) * self.height / 2 ** 16
+        heights = abs(scipy.signal.resample(fft, self.bars) * self.height / 2 ** 16)
         for i, height in enumerate(heights):
             pygame.draw.rect(
                 self.screen,
@@ -59,9 +59,9 @@ class Plot:
 
 
 def main():
-    events: "Queue[events.Event]" = Queue()
+    event_queue: "Queue[events.Event]" = Queue()
     pcm_in: "Queue[models.PCM]" = Queue()
-    app = application.Application(events, pcm_in)
+    app = application.Application(event_queue, pcm_in)
     config = app.config.get("gui", dict())
     disp_no = os.getenv("DISPLAY")
     if disp_no:
@@ -97,6 +97,7 @@ def main():
     screen.fill((0, 0, 0))
     # Initialise font support
     pygame.font.init()
+    font = pygame.font.Font(pygame.font.get_default_font(), 15)
     # Render the screen
     pygame.display.update()
 
@@ -105,7 +106,7 @@ def main():
         x=0,
         y=0,
         width=screen.get_width(),
-        height=screen.get_height(),
+        height=screen.get_height() - 50,
         bars=40,
         bar_width=screen.get_width() // 45,
         color=(139, 0, 139),
@@ -114,6 +115,7 @@ def main():
     try:
         app.run()
         clock = pygame.time.Clock()
+        title = "<Idle>"
         while True:
             for event in pygame.event.get():
                 if event.type == QUIT or (
@@ -123,8 +125,15 @@ def main():
                     pygame.quit()
                     return
             try:
-                while event := events.get(False):
+                while event := event_queue.get(False):
                     ...
+                    if isinstance(event, events.StartedPlaying):
+                        title = "<Starting...>"
+                    elif isinstance(event, events.StoppedPlaying):
+                        title = "<Idle>"
+                    elif isinstance(event, events.NewMetadata):
+                        title = event.title
+
             except queue.Empty:
                 ...
             try:
@@ -134,7 +143,14 @@ def main():
                 ...
             screen.fill((0, 0, 0))
             plot.draw()
+            title_text = font.render(title, True, (255, 255, 255))
+            title_rect = title_text.get_rect()
+            title_rect.left = 25
+            title_rect.centery = screen.get_height() - 25
+            screen.blit(title_text, title_rect)
             pygame.display.update()
             clock.tick(FPS)
     except:
+        logger.exception("Shutting down")
+    finally:
         app.shutdown()

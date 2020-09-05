@@ -13,4 +13,6 @@ def main() -> None:
         while event := events.get():
             logging.info("Event: %s", event)
     except:
+        logging.exception("Shutting down")
+    finally:
         app.shutdown()
