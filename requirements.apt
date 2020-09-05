@@ -1,0 +1,25 @@
+build-essential
+python-dev
+
+# numpy
+cython
+gfortran
+liblapack-dev
+libopenblas-dev
+
+# PyDejavu
+libpq-dev
+portaudio19-dev
+
+# pygame
+ffmpeg
+libavcodec-dev
+libavformat-dev
+libportmidi-dev
+libsdl-image1.2-dev
+libsdl-mixer1.2-dev
+libsdl-ttf2.0-dev
+libsdl1.2-dev
+libsmpeg-dev
+libswscale-dev
+subversion
