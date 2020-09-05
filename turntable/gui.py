@@ -108,7 +108,7 @@ def main():
     screen.fill((0, 0, 0))
     # Initialise font support
     pygame.font.init()
-    font = pygame.font.Font(pygame.font.get_default_font(), 15)
+    font = pygame.font.Font(pygame.font.get_default_font(), int(20*HEIGHT/720))
     # Render the screen
     pygame.display.update()
 
