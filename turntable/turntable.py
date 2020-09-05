@@ -60,11 +60,12 @@ class Turntable(Process):
         fingerprint_delay: int = 5,
         fingerprint_identify_delay: int = 5,
         fingerprint_identify_seconds: int = 5,
+        fingerprint_store_path: str = "/tmp/fingerprint.wav",
         fingerprint_store_seconds: int = 30,
         sample_seconds: int = 30,
         silence_threshold: int = 20,
         stop_delay: int = 5,
-    ) -> none:
+    ) -> None:
         super().__init__()
         maxlen = channels * 2 * framerate * sample_seconds
         self.buffer = PCM(framerate=framerate, channels=channels, maxlen=maxlen)
@@ -78,6 +79,7 @@ class Turntable(Process):
         self.fingerprint_delay = fingerprint_delay
         self.fingerprint_identify_delay = fingerprint_identify_delay
         self.fingerprint_identify_seconds = fingerprint_identify_seconds
+        self.fingerprint_store_path = fingerprint_store_path
         self.fingerprint_store_seconds = fingerprint_store_seconds
         self.silence_threshold = silence_threshold
         self.stop_delay = stop_delay
@@ -130,7 +132,7 @@ class Turntable(Process):
             ):
                 startframe = -self.buffer.framerate * self.fingerprint_store_seconds
                 sample = self.buffer[startframe:]
-                with wave.open("/tmp/fingerprint.wav", "wb") as wavfile:
+                with wave.open(self.fingerprint_store_path, "wb") as wavfile:
                     wavfile.setsampwidth(2)
                     wavfile.setnchannels(sample.channels)
                     wavfile.setframerate(sample.framerate)

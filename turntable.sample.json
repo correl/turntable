@@ -11,6 +11,7 @@
         "silence_threshold": 100,
         "check_interval": 0.5,
         "sample_seconds": 30,
+        "fingerprint_store_path": "/tmp/fingerprint.wav",
         "fingerprint_store_seconds": 30,
         "fingerprint_identify_seconds": 5,
         "fingerprint_delay": 5

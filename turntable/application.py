@@ -93,6 +93,9 @@ class Application:
             fingerprint_identify_seconds=turntable_config.get(
                 "fingerprint_identify_seconds", 5
             ),
+            fingerprint_store_path=turntable_config.get(
+                "fingerprint_store_path", "/tmp/fingerprint.wav"
+            ),
             fingerprint_store_seconds=turntable_config.get(
                 "fingerprint_store_seconds", 30
             ),
