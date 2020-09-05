@@ -1,11 +1,16 @@
 import logging
+from multiprocessing import Queue
 
-from turntable import application, turntable
+from turntable.application import Application
+from turntable.events import Event
 
 
 def main() -> None:
-    app = application.Application()
-    with app.run() as events:
+    events: "Queue[Event]" = Queue()
+    app = Application(events)
+    app.run()
+    try:
         while event := events.get():
-            if not isinstance(event, turntable.Audio):
-                logging.info("Event: %s", event)
+            logging.info("Event: %s", event)
+    except:
+        app.shutdown()

@@ -47,7 +47,7 @@ class Listener(Process):
         elif framerate not in range(*available_rates):
             raise ValueError(f"Unsupported framerate: {framerate}")
         logger.info(
-            "Listener started on '%s' [rate=%d, channels=%d, periodsize=%d]",
+            "Listener ready on '%s' [rate=%d, channels=%d, periodsize=%d]",
             device,
             framerate,
             channels,
@@ -55,6 +55,7 @@ class Listener(Process):
         )
 
     def run(self) -> None:
+        logger.debug("Starting Listener")
         framecount = 0
         event_limit = self.framerate
         while True:
@@ -96,7 +97,7 @@ class Player(Process):
             channels=channels,
         )
         logger.info(
-            "Player started on '%s' [rate=%d, channels=%d, periodsize=%d]",
+            "Player ready on '%s' [rate=%d, channels=%d, periodsize=%d]",
             device,
             framerate,
             channels,
@@ -104,5 +105,6 @@ class Player(Process):
         )
 
     def run(self) -> None:
+        logger.debug("Starting Player")
         while pcm := self.pcm_in.get():
             self.playback.write(pcm.raw)

@@ -61,11 +61,11 @@ class PCMRecognizer(BaseRecognizer):
 class Turntable(Process):
     def __init__(
         self,
+        pcm_in: "Queue[PCM]",
+        events_out: "List[Queue[Event]]",
         framerate: int,
         channels: int,
         dejavu: Dejavu,
-        pcm_in: "Queue[PCM]",
-        events_out: "Queue[Event]",
     ) -> None:
         super().__init__()
         maxlen = channels * 2 * framerate * SAMPLE_SECONDS
@@ -77,13 +77,18 @@ class Turntable(Process):
         self.identified = False
         self.captured = False
         self.last_update: float = time.time()
+        logger.info("Turntable ready")
 
     def run(self) -> None:
-        logger.info("Initializing Turntable")
+        logger.debug("Starting Turntable")
         while fragment := self.pcm_in.get():
             self.buffer.append(fragment)
             maximum = audioop.max(fragment.raw, 2)
             self.update_audiolevel(maximum)
+
+    def publish(self, event: Event) -> None:
+        for queue in self.events_out:
+            queue.put(event)
 
     def update_audiolevel(self, level: int) -> None:
         newstate = self.state
@@ -106,13 +111,13 @@ class Turntable(Process):
                 identification = self.recognizer.recognize(sample)
                 logger.debug("Dejavu results: %s", identification)
                 if results := identification[dejavu.config.settings.RESULTS]:
-                    self.events_out.put(
+                    self.publish(
                         NewMetadata(
                             results[0][dejavu.config.settings.SONG_NAME].decode("utf-8")
                         )
                     )
                 else:
-                    self.events_out.put(NewMetadata("Unknown Artist - Unknown Album"))
+                    self.publish(NewMetadata("Unknown Artist - Unknown Album"))
                 self.identified = True
             elif (
                 now - self.last_update >= FINGERPRINT_DELAY + FINGERPRINT_STORE_SECONDS
@@ -143,8 +148,8 @@ class Turntable(Process):
         self.last_update = updated_at
 
         if to_state == State.idle:
-            self.events_out.put(StoppedPlaying())
+            self.publish(StoppedPlaying())
             self.identified = False
             self.captured = False
         elif from_state == State.idle and to_state == State.playing:
-            self.events_out.put(StartedPlaying())
+            self.publish(StartedPlaying())

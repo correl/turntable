@@ -1,15 +1,16 @@
 import logging
+from multiprocessing import Queue
 import os
 import queue
 from statistics import fmean
 from typing import Iterable, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
-import pygame
-from pygame.locals import *
+import pygame  # type: ignore
+from pygame.locals import *  # type: ignore
 import scipy.signal  # type: ignore
 
-from turntable import application, models, turntable
+from turntable import application, events, models, turntable
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,9 @@ class Plot:
 
 
 def main():
-    app = application.Application()
+    events: "Queue[events.Event]" = Queue()
+    pcm_in: "Queue[models.PCM]" = Queue()
+    app = application.Application(events, pcm_in)
     config = app.config.get("gui", dict())
     disp_no = os.getenv("DISPLAY")
     if disp_no:
@@ -108,25 +111,28 @@ def main():
         color=(139, 0, 139),
     )
 
-    app.run()
-    clock = pygame.time.Clock()
-    while True:
-        for event in pygame.event.get():
-            if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
-                app.shutdown()
-                pygame.quit()
-                return
-        try:
-            while event := app.events.get(False):
+    try:
+        app.run()
+        clock = pygame.time.Clock()
+        while True:
+            for event in pygame.event.get():
+                if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
+                    app.shutdown()
+                    pygame.quit()
+                    return
+            try:
+                while event := events.get(False):
+                    ...
+            except queue.Empty:
                 ...
-        except queue.Empty:
-            ...
-        try:
-            while pcm := app.pcm_display.get(False):
-                plot.audio = pcm.raw
-        except queue.Empty:
-            ...
-        screen.fill((0, 0, 0))
-        plot.draw()
-        pygame.display.update()
-        clock.tick(FPS)
+            try:
+                while sample := pcm_in.get(False):
+                    plot.audio = sample.raw
+            except queue.Empty:
+                ...
+            screen.fill((0, 0, 0))
+            plot.draw()
+            pygame.display.update()
+            clock.tick(FPS)
+    except:
+        app.shutdown()
