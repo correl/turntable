@@ -1,3 +1,4 @@
+from bisect import bisect
 import logging
 from multiprocessing import Queue
 import os
@@ -24,8 +25,6 @@ class Plot:
         width: int,
         height: int,
         bars: int = 20,
-        bar_width: int = 40,
-        color: Tuple[int, int, int] = (255, 255, 255),
     ) -> None:
         self.screen = screen
         self.x = x
@@ -33,8 +32,6 @@ class Plot:
         self.width = width
         self.height = height
         self.bars = bars
-        self.bar_width = bar_width
-        self.color = color
         self.audio = b""
 
     def draw(self) -> None:
@@ -43,19 +40,33 @@ class Plot:
             return
         fft = abs(np.fft.fft(data).real)
         fft = fft[: len(fft) // 2]
-        heights = abs(scipy.signal.resample(fft, self.bars) * self.height / 2 ** 16)
-        for i, height in enumerate(heights):
-            pygame.draw.rect(
-                self.screen,
-                self.color,
-                (
-                    self.x + i / self.bars * self.width,
-                    self.height,
-                    self.bar_width,
-                    -height,
-                ),
-                0,
-            )
+        fft = abs(scipy.signal.resample(fft, self.bars))
+
+        light_width = self.width // (2 * self.bars - 1)
+        light_height = self.height // 2 // light_width
+        light_steps = self.height // light_height // 2
+        lights = fft * light_steps / 2 ** 16
+
+        colors = [
+            (0, (0, 255, 0)),
+            (50, (255, 255, 0)),
+            (75, (255, 0, 0)),
+        ]
+        color_keys = [k for k, v in colors]
+        color_values = [v for k, v in colors]
+        for i, steps in enumerate(lights):
+            for step in range(int(steps)):
+                color = color_values[bisect(color_keys, step / light_steps * 100) - 1]
+                pygame.draw.rect(
+                    self.screen,
+                    color,
+                    (
+                        self.x + i * light_width * 2,
+                        self.height - step * light_height * 2,
+                        light_width,
+                        -light_height,
+                    ),
+                )
 
 
 def main():
@@ -107,9 +118,7 @@ def main():
         y=0,
         width=screen.get_width(),
         height=screen.get_height() - 50,
-        bars=40,
-        bar_width=screen.get_width() // 45,
-        color=(139, 0, 139),
+        bars=15,
     )
 
     try:
