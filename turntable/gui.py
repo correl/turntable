@@ -60,9 +60,6 @@ class Plot:
 def main():
     app = application.Application()
     config = app.config.get("gui", dict())
-    FPS = int(config.get("fps", 30))
-    WIDTH = int(config.get("width", 800))
-    HEIGHT = int(config.get("height", 600))
     disp_no = os.getenv("DISPLAY")
     if disp_no:
         logger.info("I'm running under X display = {0}".format(disp_no))
@@ -87,7 +84,10 @@ def main():
         raise Exception("No suitable video driver found!")
 
     size = (pygame.display.Info().current_w, pygame.display.Info().current_h)
-    logger.info("Window size: %d x %d" % (size[0], size[1]))
+    logger.info("Maximum size: %d x %d" % (size[0], size[1]))
+    WIDTH = int(config.get("width", size[0]))
+    HEIGHT = int(config.get("height", size[1]))
+    FPS = int(config.get("fps", 60))
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     # Clear the screen to start
     screen.fill((0, 0, 0))
@@ -128,4 +128,4 @@ def main():
         screen.fill((0, 0, 0))
         plot.draw()
         pygame.display.update()
-        clock.tick(30)
+        clock.tick(FPS)
