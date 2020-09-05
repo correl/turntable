@@ -79,12 +79,26 @@ class Application:
 
         dejavu = Dejavu(self.config.get("dejavu", dict()))
 
+        turntable_config = self.config.get("turntable", dict())
         turntable = Turntable(
             pcm_in,
             event_queues,
             listener.framerate,
             listener.channels,
             dejavu,
+            fingerprint_delay=turntable_config.get("fingerprint_delay", 5),
+            fingerprint_identify_delay=turntable_config.get(
+                "fingerprint_identify_delay", 5
+            ),
+            fingerprint_identify_seconds=turntable_config.get(
+                "fingerprint_identify_seconds", 5
+            ),
+            fingerprint_store_seconds=turntable_config.get(
+                "fingerprint_store_seconds", 30
+            ),
+            sample_seconds=turntable_config.get("sample_seconds", 30),
+            silence_threshold=turntable_config.get("silence_threshold", 20),
+            stop_delay=turntable_config.get("stop_delay", 5),
         )
         self.processes.append(turntable)
 

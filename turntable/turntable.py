@@ -20,15 +20,6 @@ from turntable.models import PCM
 logger = logging.getLogger(__name__)
 
 
-FINGERPRINT_DELAY = 5
-FINGERPRINT_IDENTIFY_DELAY = 5
-FINGERPRINT_IDENTIFY_SECONDS = 5
-FINGERPRINT_STORE_SECONDS = 30
-SAMPLE_SECONDS = 30
-SILENCE_THRESHOLD = 20
-STOP_DELAY = 5
-
-
 class State(enum.Enum):
     idle = "idle"
     playing = "playing"
@@ -66,9 +57,16 @@ class Turntable(Process):
         framerate: int,
         channels: int,
         dejavu: Dejavu,
-    ) -> None:
+        fingerprint_delay: int = 5,
+        fingerprint_identify_delay: int = 5,
+        fingerprint_identify_seconds: int = 5,
+        fingerprint_store_seconds: int = 30,
+        sample_seconds: int = 30,
+        silence_threshold: int = 20,
+        stop_delay: int = 5,
+    ) -> none:
         super().__init__()
-        maxlen = channels * 2 * framerate * SAMPLE_SECONDS
+        maxlen = channels * 2 * framerate * sample_seconds
         self.buffer = PCM(framerate=framerate, channels=channels, maxlen=maxlen)
         self.recognizer = PCMRecognizer(dejavu)
         self.pcm_in = pcm_in
@@ -77,6 +75,12 @@ class Turntable(Process):
         self.identified = False
         self.captured = False
         self.last_update: float = time.time()
+        self.fingerprint_delay = fingerprint_delay
+        self.fingerprint_identify_delay = fingerprint_identify_delay
+        self.fingerprint_identify_seconds = fingerprint_identify_seconds
+        self.fingerprint_store_seconds = fingerprint_store_seconds
+        self.silence_threshold = silence_threshold
+        self.stop_delay = stop_delay
         logger.info("Turntable ready")
 
     def run(self) -> None:
@@ -95,18 +99,18 @@ class Turntable(Process):
         now = time.time()
         if self.state == State.idle:
             # Transition to playing if there's sufficient audio.
-            if level > SILENCE_THRESHOLD:
+            if level > self.silence_threshold:
                 self.transition(State.playing, now)
         elif self.state == State.playing:
             # Transition to silent when the audio drops out.
-            if level <= SILENCE_THRESHOLD:
+            if level <= self.silence_threshold:
                 self.transition(State.silent, now)
             elif (
                 now - self.last_update
-                >= FINGERPRINT_DELAY + FINGERPRINT_IDENTIFY_SECONDS
+                >= self.fingerprint_delay + self.fingerprint_identify_seconds
                 and self.identified == False
             ):
-                startframe = -self.buffer.framerate * FINGERPRINT_IDENTIFY_SECONDS
+                startframe = -self.buffer.framerate * self.fingerprint_identify_seconds
                 sample = self.buffer[startframe:]
                 identification = self.recognizer.recognize(sample)
                 logger.debug("Dejavu results: %s", identification)
@@ -120,10 +124,11 @@ class Turntable(Process):
                     self.publish(NewMetadata("Unknown Artist - Unknown Album"))
                 self.identified = True
             elif (
-                now - self.last_update >= FINGERPRINT_DELAY + FINGERPRINT_STORE_SECONDS
+                now - self.last_update
+                >= self.fingerprint_delay + self.fingerprint_store_seconds
                 and self.captured == False
             ):
-                startframe = -self.buffer.framerate * FINGERPRINT_STORE_SECONDS
+                startframe = -self.buffer.framerate * self.fingerprint_store_seconds
                 sample = self.buffer[startframe:]
                 with wave.open("/tmp/fingerprint.wav", "wb") as wavfile:
                     wavfile.setsampwidth(2)
@@ -136,9 +141,9 @@ class Turntable(Process):
         elif self.state == State.silent:
             # Transition back to playing if audio returns within STOP_DELAY
             # seconds, otherwise transition to idle.
-            if level > SILENCE_THRESHOLD:
+            if level > self.silence_threshold:
                 self.transition(State.playing, now)
-            elif now - self.last_update >= STOP_DELAY:
+            elif now - self.last_update >= self.stop_delay:
                 self.transition(State.idle, now)
 
     def transition(self, to_state: State, updated_at: float) -> None:
