@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "turntable"
-version = "0.1.0"
+version = "1.0.0"
 description = "Turntable audio monitoring"
 authors = ["Correl Roush <correl@gmail.com>"]
 license = "MIT"
