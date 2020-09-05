@@ -2,9 +2,18 @@
     "debug": false,
     "audio": {
         "device": "hw:1,0",
+        "output_device": "hw:0,0",
         "framerate": 48000,
         "channels": 2,
         "period_size": 4096
+    },
+    "turntable": {
+        "silence_threshold": 100,
+        "check_interval": 0.5,
+        "sample_seconds": 30,
+        "fingerprint_store_seconds": 30,
+        "fingerprint_identify_seconds": 5,
+        "fingerprint_delay": 5
     },
     "dejavu": {
         "database": {
@@ -16,10 +25,15 @@
         "database_type": "postgres"
     },
     "icecast": {
+        "enabled": false,
         "host": "localhost",
         "port": 8000,
         "mountpoint": "turntable.mp3",
         "admin_user": "admin",
         "admin_password": "hackme"
+    },
+    "gui": {
+        "width": 1280,
+        "height": 720
     }
 }
