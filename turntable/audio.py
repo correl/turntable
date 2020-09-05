@@ -64,10 +64,11 @@ class Listener(Process):
                     "Sampler error (length={}, bytes={})".format(length, len(data))
                 )
 
+
 class Player(Process):
     def __init__(
         self,
-            pcm_in: "Queue[PCM]",
+        pcm_in: "Queue[PCM]",
         device: str,
         sample_length: int = 30,
         framerate: int = 44100,

@@ -116,7 +116,9 @@ def main():
         clock = pygame.time.Clock()
         while True:
             for event in pygame.event.get():
-                if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
+                if event.type == QUIT or (
+                    event.type == KEYDOWN and event.key == K_ESCAPE
+                ):
                     app.shutdown()
                     pygame.quit()
                     return
