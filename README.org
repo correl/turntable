@@ -1,0 +1,7 @@
+#+TITLE: Turntable
+
+Raspberry Pi turntable front-end providing audio spectrum visualization,
+fingerprinting and identification, and updating of Icecast stream metadata.
+
+#+ATTR_ORG: :width 800
+[[file:screenshot.png]]
