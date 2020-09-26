@@ -25,6 +25,10 @@ class Plot:
         width: int,
         height: int,
         bars: int = 20,
+        bar_colors: List[Tuple[int, Tuple[int, int, int]]] = [
+            (0, (255, 255, 255)),
+        ],
+        lines_color: Tuple[int, int, int] = (128, 128, 128),
     ) -> None:
         self.screen = screen
         self.x = x
@@ -32,6 +36,8 @@ class Plot:
         self.width = width
         self.height = height
         self.bars = bars
+        self.bar_colors = bar_colors
+        self.lines_color = lines_color
         self.audio = models.PCM(44100, 2)
 
     def spectrum(self) -> np.array:
@@ -60,7 +66,7 @@ class Plot:
         for i, line in enumerate(lines):
             pygame.draw.line(
                 self.screen,
-                (128, 128, 128),
+                self.lines_color,
                 (self.x + i * 4, self.height),
                 (self.x + i * 4, self.height - int(line)),
             )
@@ -81,13 +87,8 @@ class Plot:
         light_steps = self.height // light_height // 2
         lights = fft * light_steps / 100
 
-        colors = [
-            (0, (0, 255, 0)),
-            (50, (255, 255, 0)),
-            (75, (255, 0, 0)),
-        ]
-        color_keys = [k for k, v in colors]
-        color_values = [v for k, v in colors]
+        color_keys = [k for k, v in self.bar_colors]
+        color_values = [v for k, v in self.bar_colors]
         for i, steps in enumerate(lights):
             for step in range(int(steps)):
                 color = color_values[bisect(color_keys, step / light_steps * 100) - 1]
@@ -153,6 +154,15 @@ def main():
         width=screen.get_width(),
         height=screen.get_height() - 50,
         bars=15,
+        bar_colors=config.get(
+            "bars",
+            [
+                (0, (0, 255, 0)),
+                (50, (255, 255, 0)),
+                (75, (255, 0, 0)),
+            ],
+        ),
+        lines_color=config.get("lines", (128, 128, 128)),
     )
 
     try:
