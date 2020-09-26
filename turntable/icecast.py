@@ -28,8 +28,7 @@ class Icecast(Process):
         logger.info("Icecast Updater ready for '%s:%d/%s'", host, port, mountpoint)
 
     def set_title(self, title: str) -> None:
-        return
-        logging.info("Updating icecast title to '%s'", title)
+        logger.info("Updating icecast title to '%s'", title)
         try:
             requests.get(
                 f"http://{self.host}:{self.port}/admin/metadata",
