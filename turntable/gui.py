@@ -56,7 +56,6 @@ class Plot:
         if len(data) == 0:
             return
 
-        print((np.min(data), np.max(data)))
         nlines = self.width // 4
         data = np.mean(
             np.reshape(data[: len(data) // nlines * nlines], (-1, len(data) // nlines)),
