@@ -1,9 +1,10 @@
+*.egg
+*.egg-info
+*.log
+*.py[cod]
 .DS_Store
 .idea
-*.log
-tmp/
-
-*.py[cod]
-*.egg
 build
+dist
 htmlcov
+tmp/
