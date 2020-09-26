@@ -32,20 +32,54 @@ class Plot:
         self.width = width
         self.height = height
         self.bars = bars
-        self.audio = b""
+        self.audio = models.PCM(44100, 2)
 
-    def draw(self) -> None:
-        data = np.fromstring(self.audio, dtype=np.int16)
+    def spectrum(self) -> np.array:
+        data = np.fromstring(self.audio.raw, dtype=np.int16)
+        if len(data) == 0:
+            return data
+        merged = np.mean(np.reshape(data, (-1, self.audio.channels)), axis=1)
+        fft = np.abs(np.fft.fft(merged))
+        fft = fft[: len(fft) // 2]
+        dbfs = 20 * np.log10(fft * 2 / (len(fft) * 2 ** 15))
+        dbfs = np.maximum(-100, dbfs) + 100
+        return dbfs
+
+    def draw_lines(self) -> None:
+        data = self.spectrum()
         if len(data) == 0:
             return
-        fft = abs(np.fft.fft(data).real)
-        fft = fft[: len(fft) // 2]
-        fft = abs(scipy.signal.resample(fft, self.bars))
+
+        print((np.min(data), np.max(data)))
+        nlines = self.width // 4
+        data = np.mean(
+            np.reshape(data[: len(data) // nlines * nlines], (-1, len(data) // nlines)),
+            axis=1,
+        )
+        lines = self.height * (data / 100)
+        for i, line in enumerate(lines):
+            pygame.draw.line(
+                self.screen,
+                (128, 128, 128),
+                (self.x + i * 4, self.height),
+                (self.x + i * 4, self.height - int(line)),
+            )
+
+    def draw_bars(self) -> None:
+        data = self.spectrum()
+        if len(data) == 0:
+            return
+        fft = np.mean(
+            np.reshape(
+                data[: len(data) // self.bars * self.bars], (-1, len(data) // self.bars)
+            ),
+            axis=1,
+        )
 
         light_width = self.width // (2 * self.bars - 1)
         light_height = self.height // 2 // light_width
         light_steps = self.height // light_height // 2
-        lights = fft * light_steps / 2 ** 16
+        lights = fft * light_steps / 100
 
         colors = [
             (0, (0, 255, 0)),
@@ -147,11 +181,12 @@ def main():
                 ...
             try:
                 while sample := pcm_in.get(False):
-                    plot.audio = sample.raw
+                    plot.audio = sample
             except queue.Empty:
                 ...
             screen.fill((0, 0, 0))
-            plot.draw()
+            plot.draw_lines()
+            plot.draw_bars()
             title_text = font.render(title, True, (255, 255, 255))
             title_rect = title_text.get_rect()
             title_rect.left = 25
