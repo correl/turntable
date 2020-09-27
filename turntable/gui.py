@@ -52,8 +52,7 @@ class Plot:
         fft = fft[: len(fft) // 2]
         dbfs = 20 * np.log10(fft * 2 / (len(fft) * 2 ** 15))
         dbfs = np.maximum(-100, dbfs) + 100
-        self.spectrums.append(dbfs)
-        return np.mean(np.column_stack(self.spectrums), axis=1)
+        return dbfs
 
     def draw_lines(self) -> None:
         data = self.spectrum()
@@ -84,6 +83,8 @@ class Plot:
             ),
             axis=1,
         )
+        self.spectrums.append(fft)
+        fft = np.mean(np.column_stack(self.spectrums), axis=1)
 
         light_width = self.width // (2 * self.bars - 1)
         light_height = self.height // 2 // light_width
