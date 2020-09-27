@@ -174,6 +174,7 @@ def main():
         app.run()
         clock = pygame.time.Clock()
         title = "<Idle>"
+        frames = deque(maxlen=60 * 2)
         while True:
             for event in pygame.event.get():
                 if event.type == QUIT or (
@@ -182,6 +183,14 @@ def main():
                     app.shutdown()
                     pygame.quit()
                     return
+                if event.type == KEYDOWN and event.key == K_v:
+                    for frame, s in enumerate(frames):
+                        pygame.image.save(
+                            pygame.image.fromstring(
+                                s, (screen.get_width(), screen.get_height()), "RGB"
+                            ),
+                            "turntable-{:04d}.bmp".format(frame),
+                        )
             try:
                 while event := event_queue.get(False):
                     ...
@@ -208,6 +217,7 @@ def main():
             title_rect.centery = screen.get_height() - 25
             screen.blit(title_text, title_rect)
             pygame.display.update()
+            frames.append(pygame.image.tostring(screen, "RGB"))
             clock.tick(FPS)
     except:
         logger.exception("Shutting down")
