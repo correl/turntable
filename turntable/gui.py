@@ -1,10 +1,11 @@
 from bisect import bisect
+from collections import deque
 import logging
 from multiprocessing import Queue
 import os
 import queue
 from statistics import fmean
-from typing import Iterable, List, Optional, Tuple, Union
+from typing import Deque, Iterable, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
 import pygame  # type: ignore
@@ -29,6 +30,7 @@ class Plot:
             (0, (255, 255, 255)),
         ],
         lines_color: Tuple[int, int, int] = (128, 128, 128),
+        smoothing: int = 5,
     ) -> None:
         self.screen = screen
         self.x = x
@@ -39,6 +41,7 @@ class Plot:
         self.bar_colors = bar_colors
         self.lines_color = lines_color
         self.audio = models.PCM(44100, 2)
+        self.spectrums: Deque[np.array] = deque(maxlen=smoothing)
 
     def spectrum(self) -> np.array:
         data = np.fromstring(self.audio.raw, dtype=np.int16)
@@ -49,7 +52,8 @@ class Plot:
         fft = fft[: len(fft) // 2]
         dbfs = 20 * np.log10(fft * 2 / (len(fft) * 2 ** 15))
         dbfs = np.maximum(-100, dbfs) + 100
-        return dbfs
+        self.spectrums.append(dbfs)
+        return np.mean(np.column_stack(self.spectrums), axis=1)
 
     def draw_lines(self) -> None:
         data = self.spectrum()
@@ -162,6 +166,7 @@ def main():
             ],
         ),
         lines_color=config.get("lines", (128, 128, 128)),
+        smoothing=config.get("smoothing", 5),
     )
 
     try:
