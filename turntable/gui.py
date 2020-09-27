@@ -78,7 +78,7 @@ class Plot:
         data = self.spectrum()
         if len(data) == 0:
             return
-        fft = np.mean(
+        fft = np.max(
             np.reshape(
                 data[: len(data) // self.bars * self.bars], (-1, len(data) // self.bars)
             ),
