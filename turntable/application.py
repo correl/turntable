@@ -11,6 +11,7 @@ from dejavu import Dejavu  # type: ignore
 
 from turntable.audio import Listener, Player
 from turntable.events import Event
+from turntable.hue import Hue
 from turntable.icecast import Icecast
 from turntable.models import PCM
 from turntable.turntable import Turntable
@@ -39,7 +40,8 @@ class Application:
 
         audio_config = self.config.get("audio", dict())
         pcm_in: "Queue[PCM]" = Queue()
-        pcms: "List[Queue[PCM]]" = [pcm_in]
+        hue_pcm: "Queue[PCM]" = Queue()
+        pcms: "List[Queue[PCM]]" = [pcm_in, hue_pcm]
         if pcm:
             pcms.append(pcm)
         if output_device := audio_config.get("output_device"):
@@ -76,6 +78,20 @@ class Application:
             )
             event_queues.append(icecast_events)
             self.processes.append(icecast)
+
+        hue_config = self.config.get("hue", dict())
+        hue_enabled = hue_config.get("enabled", False)
+        if hue_enabled:
+            hue_events: "Queue[Event]" = Queue()
+            hue = Hue(
+                pcm_in=hue_pcm,
+                events=hue_events,
+                host=hue_config.get("host", "localhost"),
+                username=hue_config.get("username", "turntable"),
+                light=hue_config.get("light", "Light"),
+            )
+            event_queues.append(hue_events)
+            self.processes.append(hue)
 
         dejavu = Dejavu(self.config.get("dejavu", dict()))
 

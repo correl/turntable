@@ -25,6 +25,12 @@
         },
         "database_type": "postgres"
     },
+    "hue": {
+        "enabled": false,
+        "host": "localhost",
+        "username": "turntable",
+        "light": "My Light"
+    },
     "icecast": {
         "enabled": false,
         "host": "localhost",
