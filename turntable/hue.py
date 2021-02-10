@@ -57,22 +57,24 @@ class Hue(Process):
         self.username = username
         self.light = light
         self.light_id = None
+        self.light_state = dict()
+        self.active = False
 
         try:
             lights = hue_response(
                 requests.get(f"http://{self.host}/api/{self.username}/lights")
             )
         except HueError as error:
-            logger.warn(f"Error fetching lights: {error}")
+            logger.warn(f"Error fetching lights: %s", error)
             return
         try:
-            self.light_id = next(
+            self.light_id, self.light_state = next(
                 filter(
                     lambda i: i[1]["name"].lower() == self.light.lower(), lights.items()
                 )
-            )[0]
+            )
         except StopIteration:
-            logger.warn(f"Could not find a light named '{light}")
+            logger.warn(f"Could not find a light named '%s'", light)
             return
         logger.info("Hue ready")
 
@@ -83,33 +85,61 @@ class Hue(Process):
         logger.debug("Starting Hue")
         max_peak = 3000
         audio = None
-        while True:
+        stopping = False
+        while not stopping:
             try:
                 while event := self.events.get(False):
-                    ...
+                    if isinstance(event, StartedPlaying):
+                        try:
+                            self.light_state = hue_response(
+                                requests.get(
+                                    f"http://{self.host}/api/{self.username}/lights/{self.light_id}"
+                                )
+                            )
+                            logger.debug("Stored light state")
+                        except HueError as e:
+                            logger.warn(f"Error loading current light state: %s", e)
+                        self.active = True
+                    elif isinstance(event, StoppedPlaying):
+                        self.active = False
+                        original_brightness = self.light_state.get("state", {}).get(
+                            "bri"
+                        )
+                        if original_brightness is not None:
+                            try:
+                                hue_response(
+                                    requests.put(
+                                        f"http://{self.host}/api/{self.username}/lights/{self.light_id}/state",
+                                        json={"bri": original_brightness},
+                                    )
+                                )
+                                logger.info(
+                                    "Restored %s to previous brightness", self.light
+                                )
+                            except HueError as e:
+                                logger.warn(f"Error restoring light brightness: %s", e)
+                    elif isinstance(event, Exit):
+                        stopping = True
             except queue.Empty:
                 ...
+            if stopping:
+                break
             try:
                 while sample := self.pcm_in.get(False):
                     audio = sample
             except queue.Empty:
                 ...
-            if not audio:
-                continue
-            rms = audioop.rms(audio.raw, audio.channels)
-            peak = audioop.max(audio.raw, audio.channels)
-            max_peak = max(peak, max_peak)
-            brightness = int(peak / max_peak * 255)
-            logger.debug(f"Brightness: {brightness}")
+            if audio and self.active:
+                rms = audioop.rms(audio.raw, audio.channels)
+                peak = audioop.max(audio.raw, audio.channels)
+                max_peak = max(peak, max_peak)
+                brightness = int(peak / max_peak * 255)
+                logger.debug(f"Brightness: {brightness}")
 
-            requests.put(
-                "http://192.168.1.199/api/bx1YKf6IQmU-W1MLHrsZ79Wz4bRWiBShb4ewBpfm/lights/7/state",
-                json={"bri": brightness, "transitiontime": 1},
-            )
-
-            # requests.put(
-            #     "http://192.168.1.199/api/bx1YKf6IQmU-W1MLHrsZ79Wz4bRWiBShb4ewBpfm/groups/2/action",
-            #     json={"bri": brightness, "transitiontime": 1},
-            # )
+                requests.put(
+                    f"http://{self.host}/api/{self.username}/lights/{self.light_id}/state",
+                    json={"bri": brightness, "transitiontime": 1},
+                )
 
             time.sleep(0.1)
+        logger.info("Hue stopped")

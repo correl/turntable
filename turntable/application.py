@@ -10,7 +10,7 @@ from typing import Any, Dict, Iterator, List, Optional
 from dejavu import Dejavu  # type: ignore
 
 from turntable.audio import Listener, Player
-from turntable.events import Event
+from turntable.events import Event, Exit
 from turntable.hue import Hue
 from turntable.icecast import Icecast
 from turntable.models import PCM
@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 class Application:
     def __init__(self, events: "Queue[Event]", pcm: "Optional[Queue[PCM]]" = None):
+        self.app_events: "Queue[Event]" = Queue()
         parser = argparse.ArgumentParser()
         parser.add_argument(
             "--config", default=os.path.expanduser("~/.config/turntable.json")
@@ -98,6 +99,7 @@ class Application:
         turntable_config = self.config.get("turntable", dict())
         turntable = Turntable(
             pcm_in,
+            self.app_events,
             event_queues,
             listener.framerate,
             listener.channels,
@@ -128,7 +130,11 @@ class Application:
             process.start()
 
     def shutdown(self) -> None:
-        logging.info("Terminating")
+        logging.info("Telling processes to exit")
+        self.app_events.put(Exit())
         for process in self.processes:
+            logging.debug("Waiting for %s to terminate", process)
+            process.join(3)
             if process.is_alive():
+                logging.info("Killing process %s", process)
                 process.kill()

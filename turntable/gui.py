@@ -174,14 +174,13 @@ def main():
         app.run()
         clock = pygame.time.Clock()
         title = "<Idle>"
-        while True:
+        stopping = False
+        while not stopping:
             for event in pygame.event.get():
                 if event.type == QUIT or (
                     event.type == KEYDOWN and event.key == K_ESCAPE
                 ):
-                    app.shutdown()
-                    pygame.quit()
-                    return
+                    stopping = True
             try:
                 while event := event_queue.get(False):
                     ...
@@ -191,9 +190,12 @@ def main():
                         title = "<Idle>"
                     elif isinstance(event, events.NewMetadata):
                         title = event.title
-
+                    elif isinstance(event, events.Exit):
+                        stopping = True
             except queue.Empty:
                 ...
+            if stopping:
+                break
             try:
                 while sample := pcm_in.get(False):
                     plot.audio = sample
@@ -212,4 +214,6 @@ def main():
     except:
         logger.exception("Shutting down")
     finally:
+        logger.info("Stopping GUI")
+        pygame.quit()
         app.shutdown()

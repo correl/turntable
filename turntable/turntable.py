@@ -4,6 +4,7 @@ import enum
 import logging
 from multiprocessing import Process, Queue
 from multiprocessing.connection import Connection
+import queue
 import struct
 import time
 from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
@@ -53,6 +54,7 @@ class Turntable(Process):
     def __init__(
         self,
         pcm_in: "Queue[PCM]",
+        events_in: "Queue[Event]",
         events_out: "List[Queue[Event]]",
         framerate: int,
         channels: int,
@@ -71,6 +73,7 @@ class Turntable(Process):
         self.buffer = PCM(framerate=framerate, channels=channels, maxlen=maxlen)
         self.recognizer = PCMRecognizer(dejavu)
         self.pcm_in = pcm_in
+        self.events_in = events_in
         self.events_out = events_out
         self.state: State = State.idle
         self.identified = False
@@ -87,10 +90,20 @@ class Turntable(Process):
 
     def run(self) -> None:
         logger.debug("Starting Turntable")
-        while fragment := self.pcm_in.get():
+        while True:
+            try:
+                event = self.events_in.get(block=False)
+                if isinstance(event, Exit):
+                    self.publish(StoppedPlaying())
+                    self.publish(event)
+                    break
+            except queue.Empty:
+                ...
+            fragment = self.pcm_in.get()
             self.buffer.append(fragment)
             maximum = audioop.max(fragment.raw, 2)
             self.update_audiolevel(maximum)
+        logger.info("Turntable stopped")
 
     def publish(self, event: Event) -> None:
         for queue in self.events_out:

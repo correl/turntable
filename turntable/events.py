@@ -21,3 +21,7 @@ class StoppedPlaying(Event):
 @dataclass
 class NewMetadata(Event):
     title: str
+
+
+class Exit(Event):
+    ...

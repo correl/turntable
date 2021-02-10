@@ -52,3 +52,6 @@ class Icecast(Process):
                 self.set_title("<Idle>")
             elif isinstance(event, NewMetadata):
                 self.set_title(event.title)
+            elif isinstance(event, Exit):
+                break
+        logger.info("Icecast Updater stopped")
