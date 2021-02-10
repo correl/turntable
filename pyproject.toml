@@ -6,9 +6,10 @@ authors = ["Correl Roush <correl@gmail.com>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "~3.8"
+numpy = "^1.17.2"
 pyalsaaudio = "^0.9.0"
-pydejavu = {git = "https://github.com/worldveil/dejavu.git"}
+pydejavu = {git = "https://github.com/correl/dejavu.git", branch = "requirements"}
 requests = "^2.24.0"
 pygame = "^1.9.6"
 
